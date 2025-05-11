@@ -69,7 +69,7 @@
 </head>
 <body>
   <h1>Classifica dei miei giochi preferiti</h1>
-  <h6>ver: 0.3</h6>
+  <h6>ver: 0.4</h6>
   <div class="game-grid" id="games-container">
     <!-- Card inserite dinamicamente -->
   </div>
@@ -92,10 +92,17 @@
       return data.results[0];
     }
 
-    function getTopMetacriticPlatform(ratings) {
-      if (!ratings || ratings.length === 0) return "N/A";
-      const sorted = ratings.sort((a, b) => b.metascore - a.metascore);
-      return sorted[0]?.platform?.name ?? "N/A";
+    // Funzione per formattare la data in formato italiano
+    function formatItalianDate(dateString) {
+      const date = new Date(dateString);
+      const options = { day: 'numeric', month: 'long', year: 'numeric' };
+      return date.toLocaleDateString('it-IT', options);
+    }
+
+    // Funzione per ottenere la piattaforma (prima disponibile)
+    function getTopPlatform(platforms) {
+      if (!platforms || platforms.length === 0) return "N/A";
+      return platforms[0].platform.name;
     }
 
     async function renderGames() {
@@ -106,23 +113,12 @@
           const data = await fetchGameData(game);
 
           const name = data.name;
-
-          function formatItalianDate(dateString) {
-            const date = new Date(dateString);
-          const options = { day: 'numeric', month: 'long', year: 'numeric' };
-          return date.toLocaleDateString('it-IT', options);
-          }
-
-          const released = formatItalianDate(data.released);
-
+          const released = formatItalianDate(data.released); // Data formattata
           const image = data.background_image;
           const metacritic = data.metacritic ?? "N/A";
-          const platforms = data.platforms?.map(p => ({
-            name: p.platform.name,
-            metascore: p.metacritic ?? null
-          })) ?? [];
+          const platforms = data.platforms ?? [];
 
-          const topPlatform = getTopMetacriticPlatform(platforms);
+          const topPlatform = getTopPlatform(platforms);
 
           const card = document.createElement("div");
           card.className = "game-card";
