@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TotoCritic</title>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background-color: #f4f4f4; }
+  </style>
+</head>
+<body>
+  <h1>Voti Metacritic dei giochi</h1>
+  <table id="games-table">
+    <thead>
+      <tr>
+        <th>Nome</th>
+        <th>Metacritic</th>
+        <th>Data Uscita</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Righe inserite dinamicamente -->
+    </tbody>
+  </table>
+
+  <script>
+    const games = [
+      "elden ring",
+      "the witcher 3",
+      "cyberpunk 2077",
+      "god of war",
+      "hollow knight"
+    ];
+
+    const API_KEY = "Id86a6b8df9b2437dbf5bd0eb787906cf";
+    const baseURL = "https://api.rawg.io/api/games";
+
+    async function fetchGameData(gameName) {
+      const response = await fetch(`${baseURL}?search=${encodeURIComponent(gameName)}&key=${API_KEY}`);
+      const data = await response.json();
+      return data.results[0]; // Prende il primo risultato
+    }
+
+    async function renderTable() {
+      const tableBody = document.querySelector("#games-table tbody");
+      for (const game of games) {
+        const data = await fetchGameData(game);
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${data.name}</td>
+          <td>${data.metacritic ?? 'N/A'}</td>
+          <td>${data.released}</td>
+        `;
+        tableBody.appendChild(row);
+      }
+    }
+
+    renderTable();
+  </script>
+</body>
+</html>
