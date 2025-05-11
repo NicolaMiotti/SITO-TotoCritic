@@ -7,8 +7,6 @@
   <style>
     body {font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f2f2f2;}
     header {display: flex; justify-content: space-between; align-items: center; padding: 20px; background: #333; color: white;}
-    .login-form {display: none; flex-direction: column; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); position: absolute; top: 60px; right: 20px; z-index: 100;}
-    .login-form input {margin: 5px 0; padding: 8px;}
     .game-grid {display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; padding: 20px;}
     .game-card {width: 280px; background: white; border-radius: 12px; box-shadow: 0 4px 8px rgba(0,0,0,.15); overflow: hidden; display: flex; flex-direction: column;}
     .release-date {font-size: 14px; padding: 10px; text-align: center; background: #e9e9e9; font-weight: bold;}
@@ -24,13 +22,10 @@
 <body>
   <header>
     <h2>TotoCritic</h2>
-    <div>
-      <button onclick="toggleLogin()">Accedi</button>
-      <div class="login-form" id="loginForm">
-        <input type="text" id="userName" placeholder="Nome" />
-        <input type="text" id="userSurname" placeholder="Cognome" />
-        <button onclick="loginUser()">Conferma</button>
-      </div>
+    <div id="user-info">
+      <button onclick="loginUser()" id="login-btn">Accedi con Google</button>
+      <span id="username" style="margin-right: 10px;"></span>
+      <button onclick="logoutUser()" id="logout-btn" style="display:none;">Esci</button>
     </div>
   </header>
   <div id="games-container" class="game-grid"></div>
@@ -55,25 +50,45 @@
 
     const RAWG_API_KEY = "d86a6b8df9b2437dbf5bd0eb787906cf";
     const RAWG_BASE = "https://api.rawg.io/api/games";
-    const games = ["elden ring", "the witcher 3", "cyberpunk 2077", "god of war", "hollow knight"];
+    const games = ["elden ring", "the witcher 3", "cyberpunk 2077", "god of war", "hollow knight", "grand theft auto 6"];
 
     let currentUID = null;
+    let currentUserName = "";
 
-    function toggleLogin() {
-      document.getElementById('loginForm').style.display = 'flex';
-    }
+    firebase.auth().onAuthStateChanged(user => {
+      if (user) {
+        currentUID = user.uid;
+        currentUserName = user.displayName || "Anonimo";
+        document.getElementById("login-btn").style.display = "none";
+        document.getElementById("logout-btn").style.display = "inline-block";
+        document.getElementById("username").textContent = currentUserName;
+        renderGames();
+      }
+    });
 
     function loginUser() {
-      const name = document.getElementById("userName").value.trim();
-      const surname = document.getElementById("userSurname").value.trim();
-      if (!name || !surname) return alert("Inserisci nome e cognome");
+      const provider = new firebase.auth.GoogleAuthProvider();
+      firebase.auth().signInWithPopup(provider)
+        .then(result => {
+          const user = result.user;
+          currentUID = user.uid;
+          currentUserName = user.displayName || "Anonimo";
+          db.ref("users/" + currentUID).set({ name: currentUserName });
 
-      firebase.auth().signInAnonymously().then(() => {
-        const user = firebase.auth().currentUser;
-        currentUID = user.uid;
-        db.ref("users/" + currentUID).set({ name, surname });
-        document.getElementById('loginForm').style.display = 'none';
-        renderGames();
+          document.getElementById("login-btn").style.display = "none";
+          document.getElementById("logout-btn").style.display = "inline-block";
+          document.getElementById("username").textContent = currentUserName;
+
+          renderGames();
+        })
+        .catch(error => {
+          console.error("Errore di login:", error);
+        });
+    }
+
+    function logoutUser() {
+      firebase.auth().signOut().then(() => {
+        location.reload();
       });
     }
 
@@ -81,6 +96,7 @@
       const d = new Date(iso);
       return d.toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" });
     }
+
     function topPlatform(list) {
       return (!list || !list.length) ? "N/A" : list[0].platform.name;
     }
@@ -135,7 +151,6 @@
           voteRef.set(v);
         });
 
-        // raccogli voti globali
         await db.ref(`votes`).once("value", snap => {
           const users = snap.val();
           let total = 0, count = 0;
@@ -151,7 +166,6 @@
         });
       }
 
-      // crea tabella classifica
       let html = `<table class="ranking-table"><thead><tr><th>Gioco</th><th>Media voti utenti</th></tr></thead><tbody>`;
       for (const g of games) {
         const avg = allVotes[g].count > 0 ? (allVotes[g].total / allVotes[g].count).toFixed(1) : "—";
