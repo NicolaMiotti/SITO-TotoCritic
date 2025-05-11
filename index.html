@@ -3,99 +3,30 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>TotoCritic</title>
+  <title>Top Giochi – Voti & Immagini</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 20px;
-      background-color: #f2f2f2;
-    }
-
-    h1 {
-      text-align: center;
-      margin-bottom: 30px;
-    }
-
-    .game-grid {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 20px;
-      justify-content: center;
-    }
-
-    .game-card {
-      background-color: #fff;
-      width: 280px;
-      border-radius: 12px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .release-date {
-      font-size: 14px;
-      padding: 10px;
-      text-align: center;
-      background-color: #e9e9e9;
-      font-weight: bold;
-    }
-
-    .game-title {
-      position: relative;
-      color: white;
-      text-align: center;
-      font-size: 18px;
-      font-weight: bold;
-      background-size: cover;
-      background-position: center;
-      height: 160px;
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-      padding: 10px;
-      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
-    }
-
-    .meta-info {
-      padding: 10px;
-      text-align: center;
-      font-size: 15px;
-      background-color: #fafafa;
-      border-top: 1px solid #ddd;
-    }
-
-    .vote-input {
-      width: 80%;
-      padding: 5px;
-      font-size: 14px;
-      text-align: center;
-      margin: 10px auto;
-      display: block;
-    }
-
-    .vote-difference {
-      font-size: 14px;
-      font-weight: bold;
-      color: #333;
-      padding-top: 5px;
-    }
+    body{font-family:Arial, sans-serif;margin:0;padding:20px;background:#f2f2f2}
+    h1{text-align:center;margin-bottom:30px}
+    .game-grid{display:flex;flex-wrap:wrap;gap:20px;justify-content:center}
+    .game-card{width:280px;display:flex;flex-direction:column;background:#fff;border-radius:12px;box-shadow:0 4px 8px rgba(0,0,0,.15);overflow:hidden}
+    .release-date{font-size:14px;padding:10px;text-align:center;background:#e9e9e9;font-weight:bold}
+    .game-title{height:160px;display:flex;align-items:flex-end;justify-content:center;color:#fff;font-size:18px;font-weight:bold;background-size:cover;background-position:center;padding:10px;text-shadow:0 2px 4px rgba(0,0,0,.8)}
+    .meta-info{padding:10px;text-align:center;font-size:15px;background:#fafafa;border-top:1px solid #ddd}
+    .vote-input{width:80%;margin:10px auto;padding:5px;font-size:14px;text-align:center}
+    .vote-difference{font-size:14px;font-weight:bold;margin-top:5px}
   </style>
 </head>
 <body>
   <h1>Classifica</h1>
   <h6>ver: 0.5.1</h6>
-  <div class="game-grid" id="games-container">
-    <!-- Card inserite dinamicamente -->
-  </div>
+  <div id="games-container" class="game-grid"></div>
 
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+  <!-- Firebase v8 SDK -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
   <script>
-    // Configurazione Firebase
+    /* === CONFIG FIREBASE === */
     const firebaseConfig = {
       apiKey: "AIzaSyBRdMRfxS8XnzYK5jkjG4PnsZ-HZAe-Uew",
       authDomain: "totocritic.firebaseapp.com",
@@ -105,110 +36,80 @@
       messagingSenderId: "156556991837",
       appId: "1:156556991837:web:36bc8dd834acb259dc1cb4"
     };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-    // Inizializzazione di Firebase
-    const app = firebase.initializeApp(firebaseConfig);
-    const db = firebase.database(app);
+    /* === CONFIG RAWG === */
+    const RAWG_API_KEY = "d86a6b8df9b2437dbf5bd0eb787906cf";
+    const RAWG_BASE     = "https://api.rawg.io/api/games";
 
     const games = [
       "elden ring",
       "the witcher 3",
       "cyberpunk 2077",
       "god of war",
-      "hollow knight",
-      "grand theft auto 6",
-      "forza horizon 5"
+      "hollow knight"
     ];
 
-    const API_KEY = "d86a6b8df9b2437dbf5bd0eb787906cf";
-    const baseURL = "https://api.rawg.io/api/games";
-
-    async function fetchGameData(gameName) {
-      const response = await fetch(`${baseURL}?search=${encodeURIComponent(gameName)}&key=${API_KEY}`);
-      const data = await response.json();
-      return data.results[0];
+    function itDate(iso){
+      const d=new Date(iso);
+      return d.toLocaleDateString("it-IT",{day:"numeric",month:"long",year:"numeric"});
+    }
+    function topPlatform(list){
+      return (!list||!list.length)?"N/A":list[0].platform.name;
     }
 
-    // Funzione per formattare la data in formato italiano
-    function formatItalianDate(dateString) {
-      const date = new Date(dateString);
-      const options = { day: 'numeric', month: 'long', year: 'numeric' };
-      return date.toLocaleDateString('it-IT', options);
-    }
+    /* ----- render ----- */
+    async function render(){
+      const container=document.getElementById("games-container");
+      for(const g of games){
+        const data= await fetch(`${RAWG_BASE}?search=${encodeURIComponent(g)}&key=${RAWG_API_KEY}`)
+                            .then(r=>r.json()).then(j=>j.results[0]);
 
-    // Funzione per ottenere la piattaforma (prima disponibile)
-    function getTopPlatform(platforms) {
-      if (!platforms || platforms.length === 0) return "N/A";
-      return platforms[0].platform.name;
-    }
+        const card=document.createElement("div");
+        card.className="game-card";
+        container.appendChild(card);
 
-    // Funzione per caricare e salvare il voto dal database Firebase
-    function saveUserVote(gameName, vote) {
-      const gameRef = db.ref('votes/' + gameName);
-      gameRef.set({
-        vote: vote
-      });
-    }
+        card.innerHTML=`
+          <div class="release-date">${itDate(data.released)}</div>
+          <div class="game-title" style="background-image:url('${data.background_image}')">${data.name}</div>
+          <div class="meta-info">
+            <strong>Metacritic:</strong> ${data.metacritic ?? "N/A"}<br>
+            <strong>Piattaforma:</strong> ${topPlatform(data.platforms)}<br>
+            <div class="vote-difference" id="diff-${g}">Calcolo...</div>
+            <input id="input-${g}" class="vote-input" type="number" min="0" max="100" placeholder="Voto (0-100)">
+          </div>`;
 
-    // Funzione per ottenere il voto dell'utente
-    function loadUserVote(gameName, callback) {
-      const gameRef = db.ref('votes/' + gameName);
-      gameRef.once('value', (snapshot) => {
-        const vote = snapshot.val();
-        callback(vote ? vote.vote : null); // Chiama il callback con il voto
-      });
-    }
+        /* ----- sincronizza con Firebase ----- */
+        const diffEl   = document.getElementById(`diff-${g}`);
+        const inputEl  = document.getElementById(`input-${g}`);
+        const voteRef  = db.ref(`votes/${g}`);
 
-    // Funzione per calcolare la differenza tra il voto utente e il voto Metacritic
-    function getVoteDifference(userVote, metacritic) {
-      if (userVote === null || metacritic === "N/A") {
-        return "Nessuna differenza (voto non disponibile).";
-      }
-      return `Differenza: ${Math.abs(userVote - metacritic)}`;
-    }
-
-    async function renderGames() {
-      const container = document.getElementById("games-container");
-
-      for (const game of games) {
-        try {
-          const data = await fetchGameData(game);
-
-          const name = data.name;
-          const released = formatItalianDate(data.released); // Data formattata
-          const image = data.background_image;
-          const metacritic = data.metacritic ?? "N/A";
-          const platforms = data.platforms ?? [];
-
-          const topPlatform = getTopPlatform(platforms);
-
-          // Carica il voto dell'utente da Firebase
-          loadUserVote(game, (userVote) => {
-            const voteDifference = getVoteDifference(userVote, metacritic);
-
-            const card = document.createElement("div");
-            card.className = "game-card";
-            card.innerHTML = `
-              <div class="release-date">${released}</div>
-              <div class="game-title" style="background-image: url('${image}')">
-                ${name}
-              </div>
-              <div class="meta-info">
-                <strong>Metacritic:</strong> ${metacritic} <br/>
-                <strong>Piattaforma:</strong> ${topPlatform} <br/>
-                <div class="vote-difference">${voteDifference}</div>
-                <input class="vote-input" type="number" min="0" max="100" placeholder="Voto (0-100)" value="${userVote || ''}" onchange="saveUserVote('${game}', this.value)">
-              </div>
-            `;
-            container.appendChild(card);
-          });
-        } catch (err) {
-          console.error("Errore nel caricamento di:", game, err);
+        function updateDiff(userVote){
+          if(userVote==null || data.metacritic==null){
+            diffEl.textContent="Nessuna differenza";
+          }else{
+            diffEl.textContent="Differenza: "+Math.abs(userVote-data.metacritic);
+          }
         }
+
+        // ascolta cambi dal db
+        voteRef.on("value",snap=>{
+          const val=snap.val();
+          if(val!=null){
+            inputEl.value=val;
+            updateDiff(Number(val));
+          }
+        });
+
+        // salva quando l’utente modifica
+        inputEl.addEventListener("change",e=>{
+          const v = e.target.value ? Number(e.target.value) : null;
+          voteRef.set(v);
+        });
       }
     }
-
-    renderGames();
+    render();
   </script>
 </body>
 </html>
