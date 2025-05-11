@@ -65,24 +65,62 @@
       background-color: #fafafa;
       border-top: 1px solid #ddd;
     }
+
+    .vote-input {
+      width: 80%;
+      padding: 5px;
+      font-size: 14px;
+      text-align: center;
+      margin: 10px auto;
+      display: block;
+    }
+
+    .vote-difference {
+      font-size: 14px;
+      font-weight: bold;
+      color: #333;
+      padding-top: 5px;
+    }
   </style>
 </head>
 <body>
   <h1>Classifica</h1>
-  <h6>ver: 0.4</h6>
+  <h6>ver: 0.5</h6>
   <div class="game-grid" id="games-container">
     <!-- Card inserite dinamicamente -->
   </div>
 
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+
   <script>
+    // Configurazione Firebase
+  const firebaseConfig = {
+   apiKey: "AIzaSyBRdMRfxS8XnzYK5jkjG4PnsZ-HZAe-Uew",
+    authDomain: "totocritic.firebaseapp.com",
+    databaseURL: "https://totocritic-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "totocritic",
+    storageBucket: "totocritic.firebasestorage.app",
+    messagingSenderId: "156556991837",
+    appId: "1:156556991837:web:36bc8dd834acb259dc1cb4"
+  };
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+
+    // Inizializzazione di Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    const db = firebase.database(app);
+
     const games = [
       "elden ring",
       "the witcher 3",
       "cyberpunk 2077",
       "god of war",
       "hollow knight",
-      "forza horizon 5",
-      "grand theft auto 5"
+      "grand theft auto 6",
+      "forza horizon 5"
     ];
 
     const API_KEY = "d86a6b8df9b2437dbf5bd0eb787906cf";
@@ -107,6 +145,31 @@
       return platforms[0].platform.name;
     }
 
+    // Funzione per caricare e salvare il voto dal database Firebase
+    function saveUserVote(gameName, vote) {
+      const gameRef = db.ref('votes/' + gameName);
+      gameRef.set({
+        vote: vote
+      });
+    }
+
+    // Funzione per ottenere il voto dell'utente
+    function loadUserVote(gameName, callback) {
+      const gameRef = db.ref('votes/' + gameName);
+      gameRef.once('value', (snapshot) => {
+        const vote = snapshot.val();
+        callback(vote ? vote.vote : null); // Chiama il callback con il voto
+      });
+    }
+
+    // Funzione per calcolare la differenza tra il voto utente e il voto Metacritic
+    function getVoteDifference(userVote, metacritic) {
+      if (userVote === null || metacritic === "N/A") {
+        return "Nessuna differenza (voto non disponibile).";
+      }
+      return `Differenza: ${Math.abs(userVote - metacritic)}`;
+    }
+
     async function renderGames() {
       const container = document.getElementById("games-container");
 
@@ -122,19 +185,26 @@
 
           const topPlatform = getTopPlatform(platforms);
 
-          const card = document.createElement("div");
-          card.className = "game-card";
-          card.innerHTML = `
-            <div class="release-date">${released}</div>
-            <div class="game-title" style="background-image: url('${image}')">
-              ${name}
-            </div>
-            <div class="meta-info">
-              <strong>Metacritic:</strong> ${metacritic} <br/>
-              <strong>Piattaforma:</strong> ${topPlatform}
-            </div>
-          `;
-          container.appendChild(card);
+          // Carica il voto dell'utente da Firebase
+          loadUserVote(game, (userVote) => {
+            const voteDifference = getVoteDifference(userVote, metacritic);
+
+            const card = document.createElement("div");
+            card.className = "game-card";
+            card.innerHTML = `
+              <div class="release-date">${released}</div>
+              <div class="game-title" style="background-image: url('${image}')">
+                ${name}
+              </div>
+              <div class="meta-info">
+                <strong>Metacritic:</strong> ${metacritic} <br/>
+                <strong>Piattaforma:</strong> ${topPlatform} <br/>
+                <div class="vote-difference">${voteDifference}</div>
+                <input class="vote-input" type="number" min="0" max="100" placeholder="Voto (0-100)" value="${userVote || ''}" onchange="saveUserVote('${game}', this.value)">
+              </div>
+            `;
+            container.appendChild(card);
+          });
         } catch (err) {
           console.error("Errore nel caricamento di:", game, err);
         }
