@@ -46,18 +46,21 @@
     }
 
     async function renderTable() {
-      const tableBody = document.querySelector("#games-table tbody");
-      for (const game of games) {
-        const data = await fetchGameData(game);
-        const row = document.createElement("tr");
-        row.innerHTML = `
-          <td>${data.name}</td>
-          <td>${data.metacritic ?? 'N/A'}</td>
-          <td>${data.released}</td>
-        `;
-        tableBody.appendChild(row);
-      }
-    }
+  const tableBody = document.querySelector("#games-table tbody");
+  for (const game of games) {
+    const data = await fetchGameData(game);
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>
+        <img src="${data.background_image}" alt="${data.name}" style="width:100px; height:auto; display:block; margin-bottom:5px;">
+        ${data.name}
+      </td>
+      <td>${data.metacritic ?? 'N/A'}</td>
+      <td>${data.released}</td>
+    `;
+    tableBody.appendChild(row);
+  }
+}
 
     renderTable();
   </script>
