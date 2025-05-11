@@ -7,50 +7,72 @@
   <style>
     body {
       font-family: Arial, sans-serif;
+      margin: 0;
       padding: 20px;
-      background-color: #f9f9f9;
+      background-color: #f2f2f2;
     }
+
     h1 {
       text-align: center;
       margin-bottom: 30px;
     }
-    table {
-      border-collapse: collapse;
-      width: 100%;
+
+    .game-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      justify-content: center;
+    }
+
+    .game-card {
       background-color: #fff;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      width: 280px;
+      border-radius: 12px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
     }
-    th, td {
-      border: 1px solid #ddd;
-      padding: 12px;
-      text-align: left;
-      vertical-align: middle;
+
+    .release-date {
+      font-size: 14px;
+      padding: 10px;
+      text-align: center;
+      background-color: #e9e9e9;
+      font-weight: bold;
     }
-    th {
-      background-color: #eee;
+
+    .game-title {
+      position: relative;
+      color: white;
+      text-align: center;
+      font-size: 18px;
+      font-weight: bold;
+      background-size: cover;
+      background-position: center;
+      height: 160px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 10px;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
     }
-    img.cover {
-      width: 100px;
-      border-radius: 8px;
+
+    .meta-info {
+      padding: 10px;
+      text-align: center;
+      font-size: 15px;
+      background-color: #fafafa;
+      border-top: 1px solid #ddd;
     }
   </style>
 </head>
 <body>
   <h1>Classifica dei miei giochi preferiti</h1>
-  <h6>ver: 0.2</h6>
-  <table id="games-table">
-    <thead>
-      <tr>
-        <th>Copertina</th>
-        <th>Nome</th>
-        <th>Metacritic</th>
-        <th>Data di uscita</th>
-      </tr>
-    </thead>
-    <tbody>
-      <!-- Righe inserite dinamicamente -->
-    </tbody>
-  </table>
+  <h6>ver: 0.3</h6>
+  <div class="game-grid" id="games-container">
+    <!-- Card inserite dinamicamente -->
+  </div>
 
   <script>
     const games = [
@@ -61,35 +83,59 @@
       "hollow knight"
     ];
 
-    const API_KEY = "d86a6b8df9b2437dbf5bd0eb787906cf"; // ← Inserisci la tua API KEY di RAWG
+    const API_KEY = "d86a6b8df9b2437dbf5bd0eb787906cf"; // ← Inserisci la tua chiave
     const baseURL = "https://api.rawg.io/api/games";
 
     async function fetchGameData(gameName) {
       const response = await fetch(`${baseURL}?search=${encodeURIComponent(gameName)}&key=${API_KEY}`);
       const data = await response.json();
-      return data.results[0]; // prende il primo risultato
+      return data.results[0];
     }
 
-    async function renderTable() {
-      const tableBody = document.querySelector("#games-table tbody");
+    function getTopMetacriticPlatform(ratings) {
+      if (!ratings || ratings.length === 0) return "N/A";
+      const sorted = ratings.sort((a, b) => b.metascore - a.metascore);
+      return sorted[0]?.platform?.name ?? "N/A";
+    }
+
+    async function renderGames() {
+      const container = document.getElementById("games-container");
+
       for (const game of games) {
         try {
           const data = await fetchGameData(game);
-          const row = document.createElement("tr");
-          row.innerHTML = `
-            <td><img class="cover" src="${data.background_image}" alt="${data.name}"></td>
-            <td>${data.name}</td>
-            <td>${data.metacritic ?? 'N/A'}</td>
-            <td>${data.released}</td>
+
+          const name = data.name;
+          const released = data.released;
+          const image = data.background_image;
+          const metacritic = data.metacritic ?? "N/A";
+          const platforms = data.platforms?.map(p => ({
+            name: p.platform.name,
+            metascore: p.metacritic ?? null
+          })) ?? [];
+
+          const topPlatform = getTopMetacriticPlatform(platforms);
+
+          const card = document.createElement("div");
+          card.className = "game-card";
+          card.innerHTML = `
+            <div class="release-date">${released}</div>
+            <div class="game-title" style="background-image: url('${image}')">
+              ${name}
+            </div>
+            <div class="meta-info">
+              <strong>Metacritic:</strong> ${metacritic} <br/>
+              <strong>Piattaforma:</strong> ${topPlatform}
+            </div>
           `;
-          tableBody.appendChild(row);
-        } catch (error) {
-          console.error("Errore nel recupero dati per:", game, error);
+          container.appendChild(card);
+        } catch (err) {
+          console.error("Errore nel caricamento di:", game, err);
         }
       }
     }
 
-    renderTable();
+    renderGames();
   </script>
 </body>
 </html>
