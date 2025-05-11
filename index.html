@@ -3,23 +3,47 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>TotoCritic</title>
+  <title>Top Giochi - Voti & Immagini</title>
   <style>
-    body { font-family: Arial; padding: 20px; }
-    table { border-collapse: collapse; width: 100%; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-    th { background-color: #f4f4f4; }
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background-color: #f9f9f9;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      background-color: #fff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 12px;
+      text-align: left;
+      vertical-align: middle;
+    }
+    th {
+      background-color: #eee;
+    }
+    img.cover {
+      width: 100px;
+      border-radius: 8px;
+    }
   </style>
 </head>
 <body>
-  <h1>Voti Metacritic dei giochi</h1>
-  <h4>ver: 0.1</h4>
+  <h1>Classifica dei miei giochi preferiti</h1>
   <table id="games-table">
     <thead>
       <tr>
+        <th>Copertina</th>
         <th>Nome</th>
         <th>Metacritic</th>
-        <th>Data Uscita</th>
+        <th>Data di uscita</th>
       </tr>
     </thead>
     <tbody>
@@ -36,31 +60,33 @@
       "hollow knight"
     ];
 
-    const API_KEY = "d86a6b8df9b2437dbf5bd0eb787906cf";
+    const API_KEY = "INSERISCI_LA_TUA_API_KEY"; // ← Inserisci la tua API KEY di RAWG
     const baseURL = "https://api.rawg.io/api/games";
 
     async function fetchGameData(gameName) {
       const response = await fetch(`${baseURL}?search=${encodeURIComponent(gameName)}&key=${API_KEY}`);
       const data = await response.json();
-      return data.results[0]; // Prende il primo risultato
+      return data.results[0]; // prende il primo risultato
     }
 
     async function renderTable() {
-  const tableBody = document.querySelector("#games-table tbody");
-  for (const game of games) {
-    const data = await fetchGameData(game);
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td>
-        <img src="${data.background_image}" alt="${data.name}" style="width:100px; height:auto; display:block; margin-bottom:5px;">
-        ${data.name}
-      </td>
-      <td>${data.metacritic ?? 'N/A'}</td>
-      <td>${data.released}</td>
-    `;
-    tableBody.appendChild(row);
-  }
-}
+      const tableBody = document.querySelector("#games-table tbody");
+      for (const game of games) {
+        try {
+          const data = await fetchGameData(game);
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td><img class="cover" src="${data.background_image}" alt="${data.name}"></td>
+            <td>${data.name}</td>
+            <td>${data.metacritic ?? 'N/A'}</td>
+            <td>${data.released}</td>
+          `;
+          tableBody.appendChild(row);
+        } catch (error) {
+          console.error("Errore nel recupero dati per:", game, error);
+        }
+      }
+    }
 
     renderTable();
   </script>
