@@ -106,7 +106,15 @@
           const data = await fetchGameData(game);
 
           const name = data.name;
-          const released = data.released;
+
+          function formatItalianDate(dateString) {
+            const date = new Date(dateString);
+          const options = { day: 'numeric', month: 'long', year: 'numeric' };
+          return date.toLocaleDateString('it-IT', options);
+          }
+
+          const released = formatItalianDate(data.released);
+
           const image = data.background_image;
           const metacritic = data.metacritic ?? "N/A";
           const platforms = data.platforms?.map(p => ({
