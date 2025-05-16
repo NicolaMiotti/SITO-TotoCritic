@@ -164,16 +164,9 @@
 
           const response = await fetch(`https://sito-totocritic.onrender.com/games?search=${encodeURIComponent(g)}`);
           if (!response.ok) throw new Error(`Errore HTTP su ${g}: ${response.status}`);
-          const json = await response.json();
-          let data = null;
-          if (json.results && json.results.length > 0) {
-            // Cerca un match esatto (case-insensitive, ignora spazi e punteggiatura)
-            const normalize = str => str.toLowerCase().replace(/[^a-z0-9]/gi, '');
-            const searchNorm = normalize(g);
-            data = json.results.find(r => normalize(r.name) === searchNorm) || json.results[0];
-          }
+          const data = await response.json();
 
-          if (!data) {
+          if (!data || data.error) {
             console.warn(`Nessun risultato trovato per: ${g}`);
             // Mostra una card di errore per il gioco non trovato
             const errorCard = document.createElement("div");
@@ -190,8 +183,15 @@
             continue;
           }
 
-          // Salva il valore Metacritic per la classifica
-          gameMetacritic[g] = data.metacritic;
+          // Determina il voto da mostrare (RAWG o IGDB)
+          let voto = null;
+          if (data.source === 'rawg') {
+            voto = data.metacritic;
+          } else if (data.source === 'igdb') {
+            voto = (typeof data.aggregated_rating === 'number') ? Math.round(data.aggregated_rating) : (typeof data.rating === 'number' ? Math.round(data.rating) : null);
+          }
+          // Salva il voto per la classifica
+          gameMetacritic[g] = voto;
 
           const card = document.createElement("div");
           card.className = "game-card";
@@ -201,11 +201,10 @@
           const allUserVotesRef = db.ref(`votes`);
 
           card.innerHTML = `
-            <div class="release-date">${itDate(data.released)}</div>
-            <div class="game-title" style="background-image:url('${data.background_image}')">${data.name}</div>
+            <div class="release-date">${data.first_release_date ? itDate(new Date(data.first_release_date * 1000)) : ''}</div>
+            <div class="game-title" style="background-image:url('${data.background_image || ''}')">${data.name || g}</div>
             <div class="meta-info">
-              <strong>Metacritic:</strong> ${(typeof data.metacritic !== 'number') ? "in arrivo" : data.metacritic}<br>
-              <strong>Piattaforma:</strong> ${topPlatform(data.platforms)}<br>
+              <strong>Voto Critica:</strong> ${(typeof voto !== 'number') ? "in arrivo" : voto}<br>
               <input id="input-${g}" class="vote-input" type="number" min="0" max="100" placeholder="Il tuo voto">
               <div id="diff-${g}" class="vote-diff">Differenza: —</div>
               <div id="uservotes-${g}" class="user-votes"></div>
@@ -216,10 +215,10 @@
           const userVotesEl = document.getElementById(`uservotes-${g}`);
 
           function updateDiff(userVote) {
-            if (userVote == null || data.metacritic == null) {
+            if (userVote == null || typeof voto !== 'number') {
               diffEl.textContent = "Differenza: —";
             } else {
-              const diff = Math.abs(userVote - data.metacritic);
+              const diff = Math.abs(userVote - voto);
               diffEl.textContent = `Differenza: ${diff}`;
             }
           }
