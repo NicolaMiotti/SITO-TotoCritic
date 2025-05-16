@@ -19,12 +19,33 @@
     .ranking-table th, .ranking-table td {padding: 10px; border: 1px solid #ddd; text-align: center;}
     .ranking-table th {background: #333; color: white;}
     .save-button {margin: 10px auto; display: block; padding: 8px 16px; font-size: 14px; background: #333; color: white; border: none; border-radius: 5px; cursor: pointer;}
+    .login-form {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .login-form input {
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    .user-info {
+      color: white;
+      display: none;
+    }
   </style>
 </head>
 <body>
   <header>
     <h2>TotoCritic</h2>
-    <button onclick="loginUser()">Accedi con Google</button>
+    <div class="login-form" id="loginForm">
+      <input type="text" id="nameInput" placeholder="Nome" required>
+      <input type="text" id="surnameInput" placeholder="Cognome" required>
+      <button onclick="loginUser()">Accedi</button>
+    </div>
+    <div class="user-info" id="userInfo">
+      Benvenuto, <span id="userName"></span>
+    </div>
   </header>
   <div id="games-container" class="game-grid"></div>
   <div id="ranking"></div>
@@ -32,7 +53,6 @@
 
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 
   <script>
     const firebaseConfig = {
@@ -52,28 +72,27 @@
     let currentUID = null;
     let currentName = "";
 
-    firebase.auth().onAuthStateChanged(user => {
-      if (user) {
-        currentUID = user.uid;
-        currentName = user.displayName || "Anonimo";
-        db.ref("users/" + currentUID).set({ name: currentName });
-        loadGameList();
-      }
-    });
+    function generateUID() {
+      return 'user_' + Math.random().toString(36).substr(2, 9);
+    }
 
     function loginUser() {
-      const provider = new firebase.auth.GoogleAuthProvider();
-      firebase.auth().signInWithPopup(provider)
-        .then(result => {
-          const user = result.user;
-          currentUID = user.uid;
-          currentName = user.displayName || "Anonimo";
-          db.ref("users/" + currentUID).set({ name: currentName });
-          loadGameList();
-        })
-        .catch(error => {
-          console.error("Errore di login:", error);
-        });
+      const nameInput = document.getElementById('nameInput');
+      const surnameInput = document.getElementById('surnameInput');
+      
+      if (nameInput.value && surnameInput.value) {
+        currentName = `${nameInput.value} ${surnameInput.value}`;
+        currentUID = generateUID();
+        
+        document.getElementById('loginForm').style.display = 'none';
+        document.getElementById('userInfo').style.display = 'block';
+        document.getElementById('userName').textContent = currentName;
+        
+        db.ref("users/" + currentUID).set({ name: currentName });
+        loadGameList();
+      } else {
+        alert('Per favore, inserisci nome e cognome');
+      }
     }
 
     function itDate(iso) {
