@@ -147,13 +147,32 @@
 
       const allVotes = {};
 
-      try {
-        for (const g of games) {
-          const response = await fetch(`${RAWG_BASE}?search=${encodeURIComponent(g)}&key=${RAWG_API_KEY}`);
-          const json = await response.json();
-          const data = json.results[0];
+      for (const g of games) {
+        try {
+          // Piccolo delay per evitare limiti API
+          await new Promise(r => setTimeout(r, 300));
 
-          if (!data) continue;
+          const response = await fetch(`${RAWG_BASE}?search=${encodeURIComponent(g)}&key=${RAWG_API_KEY}`);
+          if (!response.ok) throw new Error(`Errore HTTP su ${g}: ${response.status}`);
+          const json = await response.json();
+          const data = json.results && json.results[0];
+
+          if (!data) {
+            console.warn(`Nessun risultato trovato per: ${g}`);
+            // Mostra una card di errore per il gioco non trovato
+            const errorCard = document.createElement("div");
+            errorCard.className = "game-card";
+            errorCard.style.background = "#ffeaea";
+            errorCard.innerHTML = `
+              <div class="release-date">Errore</div>
+              <div class="game-title" style="background:#ffb3b3; color:#a00;">${g}</div>
+              <div class="meta-info">
+                <strong>Impossibile caricare i dati per questo gioco.</strong><br>
+                Controlla il nome o riprova più tardi.
+              </div>`;
+            container.appendChild(errorCard);
+            continue;
+          }
 
           const card = document.createElement("div");
           card.className = "game-card";
@@ -235,20 +254,21 @@
           allVotes[g].total = total;
           allVotes[g].count = count;
           userVotesEl.innerHTML = htmlVotes;
+        } catch (error) {
+          console.error(`Errore durante il caricamento del gioco '${g}':`, error);
+          // Continua il ciclo anche se c'è un errore su questo gioco
+          continue;
         }
-
-        // Aggiorna la tabella dei ranking
-        let html = `<table class="ranking-table"><thead><tr><th>Gioco</th><th>Media voti utenti</th></tr></thead><tbody>`;
-        for (const g of games) {
-          const avg = allVotes[g]?.count > 0 ? (allVotes[g].total / allVotes[g].count).toFixed(1) : "—";
-          html += `<tr><td>${g}</td><td>${avg}</td></tr>`;
-        }
-        html += `</tbody></table>`;
-        document.getElementById("ranking").innerHTML = html;
-      } catch (error) {
-        console.error('Errore durante il rendering dei giochi:', error);
-        alert('Si è verificato un errore durante il caricamento dei giochi. Riprova.');
       }
+
+      // Aggiorna la tabella dei ranking
+      let html = `<table class="ranking-table"><thead><tr><th>Gioco</th><th>Media voti utenti</th></tr></thead><tbody>`;
+      for (const g of games) {
+        const avg = allVotes[g]?.count > 0 ? (allVotes[g].total / allVotes[g].count).toFixed(1) : "—";
+        html += `<tr><td>${g}</td><td>${avg}</td></tr>`;
+      }
+      html += `</tbody></table>`;
+      document.getElementById("ranking").innerHTML = html;
     }
   </script>
 </body>
