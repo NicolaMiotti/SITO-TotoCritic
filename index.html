@@ -49,6 +49,7 @@
     </div>
   </header>
   <div style="width:100%;height:1px;background:#ccc;margin:0 0 24px 0;"></div>
+  <div id="top3-container" style="width:100%;display:flex;justify-content:center;margin-bottom:16px;"></div>
   <div style="width:100%;display:flex;justify-content:center;margin-bottom:24px;">
     <button class="save-button" onclick="loadGameList()">Aggiorna elenco giochi</button>
   </div>
@@ -263,6 +264,9 @@
           allVotes[g].total = total;
           allVotes[g].count = count;
           userVotesEl.innerHTML = htmlVotes;
+
+          // Salva i dati Metacritic per ogni gioco nella card per uso successivo
+          card.__gameData = data;
         } catch (error) {
           console.error(`Errore durante il caricamento del gioco '${g}':`, error);
           // Continua il ciclo anche se c'è un errore su questo gioco
@@ -270,14 +274,38 @@
         }
       }
 
-      // Aggiorna la tabella dei ranking
-      let html = `<table class="ranking-table"><thead><tr><th>Gioco</th><th>Media voti utenti</th></tr></thead><tbody>`;
-      for (const g of games) {
-        const avg = allVotes[g]?.count > 0 ? (allVotes[g].total / allVotes[g].count).toFixed(1) : "—";
-        html += `<tr><td>${g}</td><td>${avg}</td></tr>`;
+      // Calcola la classifica dei primi 3 utenti più vicini al Metacritic
+      const allUserVotesRef = db.ref('votes');
+      const usersNameSnapshot = await db.ref('users').once('value');
+      const usersNameMap = usersNameSnapshot.val() || {};
+      const votesSnapshot = await allUserVotesRef.once('value');
+      const allUserVotes = votesSnapshot.val() || {};
+      const userDiffs = {};
+      for (const uid in allUserVotes) {
+        let sumDiff = 0, countDiff = 0;
+        for (const g of games) {
+          const userVote = allUserVotes[uid]?.[g];
+          const data = container.querySelector(`[id^='input-${g}']`)?.closest('.game-card')?.__gameData;
+          if (userVote != null && data && data.metacritic != null) {
+            sumDiff += Math.abs(userVote - data.metacritic);
+            countDiff++;
+          }
+        }
+        if (countDiff > 0) {
+          userDiffs[uid] = sumDiff / countDiff;
+        }
       }
-      html += `</tbody></table>`;
-      document.getElementById("ranking").innerHTML = html;
+      // Ordina per media differenza crescente
+      const sorted = Object.entries(userDiffs).sort((a,b) => a[1]-b[1]).slice(0,3);
+      let top3Html = '';
+      const pos = ['Primo','Secondo','Terzo'];
+      sorted.forEach(([uid, diff], i) => {
+        const name = usersNameMap[uid]?.name || uid.slice(0,6);
+        top3Html += `<div style='margin:0 18px;text-align:center;'><div style='font-weight:bold;font-size:18px;'>${pos[i]}</div><div style='font-size:16px;'>${name}</div></div>`;
+      });
+      document.getElementById('top3-container').innerHTML = top3Html;
+      // Svuota la tabella ranking
+      document.getElementById('ranking').innerHTML = '';
     }
 
     function logoutUser() {
