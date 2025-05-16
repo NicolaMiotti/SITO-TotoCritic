@@ -72,6 +72,20 @@
     let currentUID = null;
     let currentName = "";
 
+    // Controlla se l'utente è già loggato al caricamento della pagina
+    window.onload = function() {
+      const savedUID = localStorage.getItem('currentUID');
+      const savedName = localStorage.getItem('currentName');
+      if (savedUID && savedName) {
+        currentUID = savedUID;
+        currentName = savedName;
+        document.getElementById('loginForm').style.display = 'none';
+        document.getElementById('userInfo').style.display = 'block';
+        document.getElementById('userName').textContent = currentName;
+        loadGameList();
+      }
+    };
+
     function generateUID() {
       return 'user_' + Math.random().toString(36).substr(2, 9);
     }
@@ -83,6 +97,10 @@
       if (nameInput.value && surnameInput.value) {
         currentName = `${nameInput.value} ${surnameInput.value}`;
         currentUID = generateUID();
+        
+        // Salva i dati dell'utente nel localStorage
+        localStorage.setItem('currentUID', currentUID);
+        localStorage.setItem('currentName', currentName);
         
         document.getElementById('loginForm').style.display = 'none';
         document.getElementById('userInfo').style.display = 'block';
@@ -105,95 +123,132 @@
     }
 
     function loadGameList() {
+      if (!currentUID) {
+        alert('Per favore, effettua il login prima di visualizzare i giochi');
+        return;
+      }
+
       fetch("giochi.txt")
         .then(res => res.text())
         .then(text => {
           const uniqueGames = [...new Set(text.split(/\r?\n/).map(g => g.trim()).filter(Boolean))];
           renderGames(uniqueGames);
+        })
+        .catch(error => {
+          console.error('Errore nel caricamento dei giochi:', error);
         });
     }
 
     async function renderGames(games) {
+      if (!currentUID) return;
+      
       const container = document.getElementById("games-container");
       container.innerHTML = "";
 
       const allVotes = {};
 
-      for (const g of games) {
-        const data = await fetch(`${RAWG_BASE}?search=${encodeURIComponent(g)}&key=${RAWG_API_KEY}`)
-                            .then(r => r.json()).then(j => j.results[0]);
+      try {
+        for (const g of games) {
+          const response = await fetch(`${RAWG_BASE}?search=${encodeURIComponent(g)}&key=${RAWG_API_KEY}`);
+          const json = await response.json();
+          const data = json.results[0];
 
-        if (!data) continue;
+          if (!data) continue;
 
-        const card = document.createElement("div");
-        card.className = "game-card";
-        container.appendChild(card);
+          const card = document.createElement("div");
+          card.className = "game-card";
+          container.appendChild(card);
 
-        const voteRef = db.ref(`votes/${currentUID}/${g}`);
-        const allUserVotesRef = db.ref(`votes`);
+          const voteRef = db.ref(`votes/${currentUID}/${g}`);
+          const allUserVotesRef = db.ref(`votes`);
 
-        card.innerHTML = `
-          <div class="release-date">${itDate(data.released)}</div>
-          <div class="game-title" style="background-image:url('${data.background_image}')">${data.name}</div>
-          <div class="meta-info">
-            <strong>Metacritic:</strong> ${data.metacritic ?? "N/A"}<br>
-            <strong>Piattaforma:</strong> ${topPlatform(data.platforms)}<br>
-            <input id="input-${g}" class="vote-input" type="number" min="0" max="100" placeholder="Il tuo voto">
-            <div id="diff-${g}" class="vote-diff">Differenza: —</div>
-            <div id="uservotes-${g}" class="user-votes"></div>
-          </div>`;
+          card.innerHTML = `
+            <div class="release-date">${itDate(data.released)}</div>
+            <div class="game-title" style="background-image:url('${data.background_image}')">${data.name}</div>
+            <div class="meta-info">
+              <strong>Metacritic:</strong> ${data.metacritic ?? "N/A"}<br>
+              <strong>Piattaforma:</strong> ${topPlatform(data.platforms)}<br>
+              <input id="input-${g}" class="vote-input" type="number" min="0" max="100" placeholder="Il tuo voto">
+              <div id="diff-${g}" class="vote-diff">Differenza: —</div>
+              <div id="uservotes-${g}" class="user-votes"></div>
+            </div>`;
 
-        const inputEl = document.getElementById(`input-${g}`);
-        const diffEl = document.getElementById(`diff-${g}`);
-        const userVotesEl = document.getElementById(`uservotes-${g}`);
+          const inputEl = document.getElementById(`input-${g}`);
+          const diffEl = document.getElementById(`diff-${g}`);
+          const userVotesEl = document.getElementById(`uservotes-${g}`);
 
-        function updateDiff(userVote) {
-          if (userVote == null || data.metacritic == null) {
-            diffEl.textContent = "Differenza: —";
-          } else {
-            const diff = Math.abs(userVote - data.metacritic);
-            diffEl.textContent = `Differenza: ${diff}`;
-          }
-        }
-
-        voteRef.on("value", snap => {
-          const val = snap.val();
-          if (val != null) {
-            inputEl.value = val;
-            updateDiff(Number(val));
-          }
-        });
-
-        inputEl.addEventListener("change", e => {
-          const v = e.target.value ? Number(e.target.value) : null;
-          voteRef.set(v);
-        });
-
-        await allUserVotesRef.once("value", snap => {
-          const users = snap.val();
-          let total = 0, count = 0;
-          let htmlVotes = "<strong>Voti utenti:</strong><br>";
-          for (const uid in users) {
-            if (users[uid][g] != null) {
-              total += users[uid][g];
-              count++;
-              htmlVotes += `${uid.slice(0,6)}: ${users[uid][g]}<br>`;
+          function updateDiff(userVote) {
+            if (userVote == null || data.metacritic == null) {
+              diffEl.textContent = "Differenza: —";
+            } else {
+              const diff = Math.abs(userVote - data.metacritic);
+              diffEl.textContent = `Differenza: ${diff}`;
             }
           }
+
+          // Carica il voto esistente dell'utente
+          voteRef.on("value", snap => {
+            const val = snap.val();
+            if (val != null) {
+              inputEl.value = val;
+              updateDiff(Number(val));
+            }
+          });
+
+          // Gestisce il cambio del voto
+          inputEl.addEventListener("change", e => {
+            if (!currentUID) {
+              alert('Per favore, effettua il login prima di votare');
+              return;
+            }
+            const v = e.target.value ? Number(e.target.value) : null;
+            if (v !== null && (v < 0 || v > 100)) {
+              alert('Il voto deve essere compreso tra 0 e 100');
+              return;
+            }
+            voteRef.set(v)
+              .then(() => updateDiff(v))
+              .catch(error => {
+                console.error('Errore nel salvataggio del voto:', error);
+                alert('Errore nel salvataggio del voto. Riprova.');
+              });
+          });
+
+          // Carica i voti di tutti gli utenti
+          const votesSnapshot = await allUserVotesRef.once("value");
+          const users = votesSnapshot.val() || {};
+          let total = 0, count = 0;
+          let htmlVotes = "<strong>Voti utenti:</strong><br>";
+          
+          for (const uid in users) {
+            if (users[uid] && users[uid][g] != null) {
+              total += users[uid][g];
+              count++;
+              // Ottieni il nome dell'utente dal database
+              const userSnapshot = await db.ref(`users/${uid}`).once("value");
+              const userName = userSnapshot.val()?.name || uid.slice(0,6);
+              htmlVotes += `${userName}: ${users[uid][g]}<br>`;
+            }
+          }
+          
           if (!allVotes[g]) allVotes[g] = { total: 0, count: 0 };
           allVotes[g].total = total;
           allVotes[g].count = count;
           userVotesEl.innerHTML = htmlVotes;
-        });
-      }
+        }
 
-      let html = `<table class="ranking-table"><thead><tr><th>Gioco</th><th>Media voti utenti</th></tr></thead><tbody>`;
-      for (const g of games) {
-        const avg = allVotes[g].count > 0 ? (allVotes[g].total / allVotes[g].count).toFixed(1) : "—";
-        html += `<tr><td>${g}</td><td>${avg}</td></tr>`;
+        // Aggiorna la tabella dei ranking
+        let html = `<table class="ranking-table"><thead><tr><th>Gioco</th><th>Media voti utenti</th></tr></thead><tbody>`;
+        for (const g of games) {
+          const avg = allVotes[g]?.count > 0 ? (allVotes[g].total / allVotes[g].count).toFixed(1) : "—";
+          html += `<tr><td>${g}</td><td>${avg}</td></tr>`;
+        }
+        html += `</tbody></table>`;
+        document.getElementById("ranking").innerHTML = html;
+      } catch (error) {
+        console.error('Errore durante il rendering dei giochi:', error);
+        alert('Si è verificato un errore durante il caricamento dei giochi. Riprova.');
       }
-      html += `</tbody></table>`;
-      document.getElementById("ranking").innerHTML = html;
     }
   </script>
 </body>
