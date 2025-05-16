@@ -37,7 +37,7 @@
 </head>
 <body>
   <header>
-    <h2>TotoCritic</h2>
+    <h2 style="width:100%;text-align:center;">TotoCritic</h2>
     <div class="login-form" id="loginForm">
       <input type="text" id="nameInput" placeholder="Nome" required>
       <input type="text" id="surnameInput" placeholder="Cognome" required>
@@ -46,8 +46,11 @@
     <div class="user-info" id="userInfo">
       Benvenuto, <span id="userName"></span>
     </div>
-    <button class="save-button" style="margin-left:20px;" onclick="loadGameList()">Aggiorna elenco giochi</button>
   </header>
+  <div style="width:100%;height:1px;background:#ccc;margin:0 0 24px 0;"></div>
+  <div style="width:100%;display:flex;justify-content:center;margin-bottom:24px;">
+    <button class="save-button" onclick="loadGameList()">Aggiorna elenco giochi</button>
+  </div>
   <div id="games-container" class="game-grid"></div>
   <div id="ranking"></div>
 
