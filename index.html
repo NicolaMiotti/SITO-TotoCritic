@@ -198,7 +198,7 @@
             <div class="release-date">${itDate(data.released)}</div>
             <div class="game-title" style="background-image:url('${data.background_image}')">${data.name}</div>
             <div class="meta-info">
-              <strong>Metacritic:</strong> ${(data.metacritic === null || data.metacritic === undefined) ? "in arrivo" : data.metacritic}<br>
+              <strong>Metacritic:</strong> ${(typeof data.metacritic !== 'number') ? "in arrivo" : data.metacritic}<br>
               <strong>Piattaforma:</strong> ${topPlatform(data.platforms)}<br>
               <input id="input-${g}" class="vote-input" type="number" min="0" max="100" placeholder="Il tuo voto">
               <div id="diff-${g}" class="vote-diff">Differenza: —</div>
