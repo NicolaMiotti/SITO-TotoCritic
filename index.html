@@ -46,10 +46,10 @@
     <div class="user-info" id="userInfo">
       Benvenuto, <span id="userName"></span>
     </div>
+    <button class="save-button" style="margin-left:20px;" onclick="loadGameList()">Aggiorna elenco giochi</button>
   </header>
   <div id="games-container" class="game-grid"></div>
   <div id="ranking"></div>
-  <button class="save-button" onclick="loadGameList()">Aggiorna elenco giochi</button>
 
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -239,13 +239,14 @@
           let total = 0, count = 0;
           let htmlVotes = "<strong>Voti utenti:</strong><br>";
           
+          // Recupera tutti i nomi degli utenti in un'unica chiamata
+          const usersNameSnapshot = await db.ref('users').once('value');
+          const usersNameMap = usersNameSnapshot.val() || {};
           for (const uid in users) {
             if (users[uid] && users[uid][g] != null) {
               total += users[uid][g];
               count++;
-              // Ottieni il nome dell'utente dal database
-              const userSnapshot = await db.ref(`users/${uid}`).once("value");
-              const userName = userSnapshot.val()?.name || uid.slice(0,6);
+              const userName = usersNameMap[uid]?.name || uid.slice(0,6);
               htmlVotes += `${userName}: ${users[uid][g]}<br>`;
             }
           }
