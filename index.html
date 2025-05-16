@@ -37,14 +37,15 @@
 </head>
 <body>
   <header>
-    <h2 style="width:100%;text-align:center;">TotoCritic</h2>
+    <h2 style="margin:0;">TotoCritic</h2>
     <div class="login-form" id="loginForm">
       <input type="text" id="nameInput" placeholder="Nome" required>
       <input type="text" id="surnameInput" placeholder="Cognome" required>
       <button onclick="loginUser()">Accedi</button>
     </div>
-    <div class="user-info" id="userInfo">
+    <div class="user-info" id="userInfo" style="display:flex;align-items:center;gap:10px;">
       Benvenuto, <span id="userName"></span>
+      <button id="logoutBtn" class="save-button" style="padding:4px 10px;font-size:13px;background:#888;" onclick="logoutUser()">Logout</button>
     </div>
   </header>
   <div style="width:100%;height:1px;background:#ccc;margin:0 0 24px 0;"></div>
@@ -277,6 +278,17 @@
       }
       html += `</tbody></table>`;
       document.getElementById("ranking").innerHTML = html;
+    }
+
+    function logoutUser() {
+      localStorage.removeItem('currentUID');
+      localStorage.removeItem('currentName');
+      currentUID = null;
+      currentName = "";
+      document.getElementById('loginForm').style.display = 'flex';
+      document.getElementById('userInfo').style.display = 'none';
+      document.getElementById('games-container').innerHTML = '';
+      document.getElementById('ranking').innerHTML = '';
     }
   </script>
 </body>
