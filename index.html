@@ -165,7 +165,13 @@
           const response = await fetch(`https://sito-totocritic.onrender.com/games?search=${encodeURIComponent(g)}`);
           if (!response.ok) throw new Error(`Errore HTTP su ${g}: ${response.status}`);
           const json = await response.json();
-          const data = json.results && json.results[0];
+          let data = null;
+          if (json.results && json.results.length > 0) {
+            // Cerca un match esatto (case-insensitive, ignora spazi e punteggiatura)
+            const normalize = str => str.toLowerCase().replace(/[^a-z0-9]/gi, '');
+            const searchNorm = normalize(g);
+            data = json.results.find(r => normalize(r.name) === searchNorm) || json.results[0];
+          }
 
           if (!data) {
             console.warn(`Nessun risultato trovato per: ${g}`);
