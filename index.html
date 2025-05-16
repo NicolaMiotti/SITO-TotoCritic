@@ -155,6 +155,7 @@
       container.innerHTML = "";
 
       const allVotes = {};
+      const gameMetacritic = {};
 
       for (const g of games) {
         try {
@@ -182,6 +183,9 @@
             container.appendChild(errorCard);
             continue;
           }
+
+          // Salva il valore Metacritic per la classifica
+          gameMetacritic[g] = data.metacritic;
 
           const card = document.createElement("div");
           card.className = "game-card";
@@ -290,9 +294,9 @@
         let sumDiff = 0, countDiff = 0;
         for (const g of games) {
           const userVote = allUserVotes[uid]?.[g];
-          const data = container.querySelector(`[id^='input-${g}']`)?.closest('.game-card')?.__gameData;
-          if (userVote != null && data && data.metacritic != null) {
-            sumDiff += Math.abs(userVote - data.metacritic);
+          const meta = gameMetacritic[g];
+          if (userVote != null && meta != null) {
+            sumDiff += Math.abs(userVote - meta);
             countDiff++;
           }
         }
