@@ -160,7 +160,7 @@
           // Piccolo delay per evitare limiti API
           await new Promise(r => setTimeout(r, 300));
 
-          const response = await fetch(`${RAWG_BASE}?search=${encodeURIComponent(g)}&key=${RAWG_API_KEY}`);
+          const response = await fetch(`https://rawg-proxy-xxxxx.onrender.com/games?search=${encodeURIComponent(g)}`);
           if (!response.ok) throw new Error(`Errore HTTP su ${g}: ${response.status}`);
           const json = await response.json();
           const data = json.results && json.results[0];
